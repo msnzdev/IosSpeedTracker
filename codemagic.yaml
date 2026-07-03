@@ -1,0 +1,42 @@
+workflows:
+  ios-speedtracker:
+    name: Speed Tracker iOS
+    max_build_duration: 60
+    instance_type: mac_mini_m2
+
+    integrations:
+      app_store_connect: codemagic_api_key   # nombre exacto que le des a tu integración en Codemagic
+
+    environment:
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: com.tuusuario.speedtracker   # debe coincidir con project.yml y con el App ID creado en Apple
+      vars:
+        XCODE_PROJECT: "SpeedTrackerApp.xcodeproj"
+        XCODE_SCHEME: "SpeedTrackerApp"
+      xcode: latest
+      cocoapods: default
+
+    scripts:
+      - name: Instalar XcodeGen
+        script: |
+          brew install xcodegen
+
+      - name: Generar el proyecto Xcode
+        script: |
+          xcodegen generate
+
+      - name: Compilar y firmar el .ipa
+        script: |
+          xcode-project build-ipa \
+            --project "$XCODE_PROJECT" \
+            --scheme "$XCODE_SCHEME"
+
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+
+    publishing:
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: true
