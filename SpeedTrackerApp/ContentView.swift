@@ -95,7 +95,7 @@ struct ContentView: View {
             } message: {
                 Text("Para medir tu velocidad con la pantalla bloqueada, activa 'Siempre' en el permiso de ubicación desde Ajustes.")
             }
-            .onChange(of: locationManager.authorizationStatus) { _, newValue in
+            .onChange(of: locationManager.authorizationStatus) { newValue in
                 if newValue == .denied || newValue == .restricted {
                     showPermissionAlert = true
                 }
