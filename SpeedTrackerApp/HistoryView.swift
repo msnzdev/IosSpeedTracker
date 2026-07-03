@@ -4,6 +4,7 @@ struct HistoryView: View {
     @ObservedObject var routeStore: RouteStore
     @Environment(\.dismiss) private var dismiss
     @State private var routeToShare: RouteRecord?
+    @State private var routeToDelete: RouteRecord?
 
     var body: some View {
         NavigationStack {
@@ -17,8 +18,26 @@ struct HistoryView: View {
                 } else {
                     ForEach(routeStore.routes) { route in
                         VStack(alignment: .leading, spacing: 6) {
-                            Text(route.date.formatted(date: .abbreviated, time: .shortened))
-                                .font(.subheadline.bold())
+                            HStack {
+                                Text(route.date.formatted(date: .abbreviated, time: .shortened))
+                                    .font(.subheadline.bold())
+                                Spacer()
+                                Button {
+                                    routeToShare = route
+                                } label: {
+                                    Image(systemName: "square.and.arrow.up")
+                                }
+                                .buttonStyle(.borderless)
+                                .tint(.blue)
+
+                                Button {
+                                    routeToDelete = route
+                                } label: {
+                                    Image(systemName: "trash")
+                                }
+                                .buttonStyle(.borderless)
+                                .tint(.red)
+                            }
                             HStack {
                                 Label(route.durationFormatted, systemImage: "timer")
                                 Spacer()
@@ -36,6 +55,11 @@ struct HistoryView: View {
                         }
                         .padding(.vertical, 4)
                         .swipeActions(edge: .trailing) {
+                            Button(role: .destructive) {
+                                routeToDelete = route
+                            } label: {
+                                Label("Eliminar", systemImage: "trash")
+                            }
                             Button {
                                 routeToShare = route
                             } label: {
@@ -52,6 +76,22 @@ struct HistoryView: View {
             .toolbar { closeToolbarContent }
             .sheet(item: $routeToShare) { route in
                 ActivityShareSheet(items: [route.shareText])
+            }
+            .alert("¿Eliminar esta ruta?", isPresented: Binding(
+                get: { routeToDelete != nil },
+                set: { if !$0 { routeToDelete = nil } }
+            )) {
+                Button("Eliminar", role: .destructive) {
+                    if let route = routeToDelete {
+                        routeStore.delete(route)
+                    }
+                    routeToDelete = nil
+                }
+                Button("Cancelar", role: .cancel) {
+                    routeToDelete = nil
+                }
+            } message: {
+                Text("Esta acción no se puede deshacer.")
             }
         }
     }
