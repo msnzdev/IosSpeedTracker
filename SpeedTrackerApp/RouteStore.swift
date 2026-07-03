@@ -19,6 +19,11 @@ final class RouteStore: ObservableObject {
         save()
     }
 
+    func delete(_ route: RouteRecord) {
+        routes.removeAll { $0.id == route.id }
+        save()
+    }
+
     private func save() {
         if let data = try? JSONEncoder().encode(routes) {
             UserDefaults.standard.set(data, forKey: key)
