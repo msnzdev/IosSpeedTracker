@@ -12,6 +12,13 @@ jobs:
       - name: Descargar el código
         uses: actions/checkout@v4
 
+      - name: Seleccionar la versión más reciente de Xcode disponible
+        run: |
+          LATEST_XCODE=$(ls -d /Applications/Xcode_*.app | sort -V | tail -n 1)
+          echo "Usando: $LATEST_XCODE"
+          sudo xcode-select -s "$LATEST_XCODE"
+          xcodebuild -version
+
       - name: Instalar XcodeGen
         run: brew install xcodegen
 
