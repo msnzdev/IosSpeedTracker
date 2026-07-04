@@ -18,6 +18,21 @@ struct ContentView: View {
 
                 VStack(spacing: 28) {
 
+                    // Indicador de estado del GPS
+                    HStack(spacing: 8) {
+                        Circle()
+                            .fill(locationManager.isGPSActive ? Color.green : Color.orange)
+                            .frame(width: 10, height: 10)
+                        Text(locationManager.isGPSActive ? "GPS Activo" : "GPS Inactivo")
+                            .font(.caption.bold())
+                            .foregroundStyle(locationManager.isGPSActive ? .green : .orange)
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+                    .background(.white.opacity(0.08))
+                    .clipShape(Capsule())
+                    .padding(.top, 8)
+
                     // Velocidad actual
                     VStack(spacing: 4) {
                         Text("VELOCIDAD ACTUAL")
@@ -59,11 +74,18 @@ struct ContentView: View {
                             .font(.title2.bold())
                             .frame(maxWidth: .infinity)
                             .padding()
-                            .background(locationManager.isTracking ? Color.red : Color.green)
+                            .background(startButtonColor)
                             .foregroundStyle(.white)
                             .clipShape(RoundedRectangle(cornerRadius: 16))
                     }
+                    .disabled(!locationManager.isTracking && !locationManager.isGPSActive)
                     .padding(.horizontal)
+
+                    if !locationManager.isTracking && !locationManager.isGPSActive {
+                        Text("Esperando señal GPS antes de poder empezar…")
+                            .font(.caption)
+                            .foregroundStyle(.orange)
+                    }
 
                     Button {
                         showHistory = true
@@ -95,13 +117,18 @@ struct ContentView: View {
             } message: {
                 Text("Para medir tu velocidad con la pantalla bloqueada, activa 'Siempre' en el permiso de ubicación desde Ajustes.")
             }
-            .onChange(of: locationManager.authorizationStatus) { _, newValue in
+            .onChange(of: locationManager.authorizationStatus) { newValue in
                 if newValue == .denied || newValue == .restricted {
                     showPermissionAlert = true
                 }
             }
         }
         .preferredColorScheme(.dark)
+    }
+
+    private var startButtonColor: Color {
+        if locationManager.isTracking { return .red }
+        return locationManager.isGPSActive ? .green : .gray
     }
 
     private func statBox(title: String, value: String) -> some View {
