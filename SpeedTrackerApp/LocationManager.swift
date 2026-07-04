@@ -12,12 +12,16 @@ final class LocationManager: NSObject, ObservableObject, CLLocationManagerDelega
     @Published var distanceKm: Double = 0
     @Published var isTracking: Bool = false
     @Published var authorizationStatus: CLAuthorizationStatus = .notDetermined
+    @Published var isGPSActive: Bool = false
 
     // MARK: - Privado
     private let manager = CLLocationManager()
     private var lastLocation: CLLocation?
     private var startDate: Date?
     private var timer: Timer?
+    private var routeCoordinates: [CLLocationCoordinate2D] = []
+    private var lastRecordedPathLocation: CLLocation?
+    private let minMetersBetweenPathPoints: CLLocationDistance = 15
 
     override init() {
         super.init()
@@ -42,6 +46,8 @@ final class LocationManager: NSObject, ObservableObject, CLLocationManagerDelega
         lastLocation = nil
         startDate = Date()
         isTracking = true
+        routeCoordinates = []
+        lastRecordedPathLocation = nil
 
         timer?.invalidate()
         timer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
@@ -64,7 +70,8 @@ final class LocationManager: NSObject, ObservableObject, CLLocationManagerDelega
             duration: elapsedTime,
             averageSpeedKmh: averageSpeedKmh,
             maxSpeedKmh: maxSpeedKmh,
-            distanceKm: distanceKm
+            distanceKm: distanceKm,
+            coordinates: routeCoordinates.map { RouteCoordinate(latitude: $0.latitude, longitude: $0.longitude) }
         )
         return record
     }
@@ -90,6 +97,15 @@ final class LocationManager: NSObject, ObservableObject, CLLocationManagerDelega
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
         guard let location = locations.last else { return }
 
+        // Consideramos el GPS "activo" cuando la precisión horizontal es razonable.
+        // Al principio (recién abierta la app o tras salir de un túnel) la precisión
+        // es mala o inválida (-1), y ahí es cuando NO queremos que el usuario empiece la ruta.
+        if location.horizontalAccuracy >= 0 && location.horizontalAccuracy <= 50 {
+            isGPSActive = true
+        } else {
+            isGPSActive = false
+        }
+
         // location.speed viene en m/s; -1 significa "no disponible"
         if location.speed >= 0 {
             let speedKmh = location.speed * 3.6
@@ -109,6 +125,18 @@ final class LocationManager: NSObject, ObservableObject, CLLocationManagerDelega
             }
             lastLocation = location
             recomputeAverage()
+
+            // Grabamos el trazado de la ruta, pero solo un punto cada X metros
+            // para no acumular miles de coordenadas casi idénticas.
+            if let lastPathPoint = lastRecordedPathLocation {
+                if location.distance(from: lastPathPoint) >= minMetersBetweenPathPoints {
+                    routeCoordinates.append(location.coordinate)
+                    lastRecordedPathLocation = location
+                }
+            } else {
+                routeCoordinates.append(location.coordinate)
+                lastRecordedPathLocation = location
+            }
         }
     }
 
