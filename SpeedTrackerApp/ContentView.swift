@@ -5,6 +5,7 @@ struct ContentView: View {
     @StateObject private var routeStore = RouteStore()
 
     @State private var showShareSheet = false
+    @State private var shareItems: [Any] = []
     @State private var lastRoute: RouteRecord?
     @State private var showHistory = false
     @State private var showPermissionAlert = false
@@ -65,7 +66,7 @@ struct ContentView: View {
                             let record = locationManager.stopRoute()
                             routeStore.add(record)
                             lastRoute = record
-                            showShareSheet = true
+                            prepareShare(for: record)
                         } else {
                             locationManager.startRoute()
                         }
@@ -103,9 +104,7 @@ struct ContentView: View {
                 HistoryView(routeStore: routeStore)
             }
             .sheet(isPresented: $showShareSheet) {
-                if let route = lastRoute {
-                    ActivityShareSheet(items: [route.shareText])
-                }
+                ActivityShareSheet(items: shareItems)
             }
             .alert("Permiso de ubicación necesario", isPresented: $showPermissionAlert) {
                 Button("Abrir Ajustes") {
@@ -129,6 +128,19 @@ struct ContentView: View {
     private var startButtonColor: Color {
         if locationManager.isTracking { return .red }
         return locationManager.isGPSActive ? .green : .gray
+    }
+
+    private func prepareShare(for route: RouteRecord) {
+        RouteSnapshotGenerator.generate(for: route) { image in
+            DispatchQueue.main.async {
+                var items: [Any] = [route.shareText]
+                if let image {
+                    items.insert(image, at: 0)
+                }
+                self.shareItems = items
+                self.showShareSheet = true
+            }
+        }
     }
 
     private func statBox(title: String, value: String) -> some View {

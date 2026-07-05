@@ -3,8 +3,9 @@ import SwiftUI
 struct HistoryView: View {
     @ObservedObject var routeStore: RouteStore
     @Environment(\.dismiss) private var dismiss
-    @State private var routeToShare: RouteRecord?
     @State private var routeToDelete: RouteRecord?
+    @State private var shareItems: [Any] = []
+    @State private var showShareSheet = false
 
     var body: some View {
         NavigationStack {
@@ -31,7 +32,7 @@ struct HistoryView: View {
                                     }
                                     Spacer()
                                     Button {
-                                        routeToShare = route
+                                        prepareShare(for: route)
                                     } label: {
                                         Image(systemName: "square.and.arrow.up")
                                     }
@@ -70,7 +71,7 @@ struct HistoryView: View {
                                 Label("Eliminar", systemImage: "trash")
                             }
                             Button {
-                                routeToShare = route
+                                prepareShare(for: route)
                             } label: {
                                 Label("Compartir", systemImage: "square.and.arrow.up")
                             }
@@ -83,8 +84,8 @@ struct HistoryView: View {
             .navigationTitle("Historial de rutas")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { closeToolbarContent }
-            .sheet(item: $routeToShare) { route in
-                ActivityShareSheet(items: [route.shareText])
+            .sheet(isPresented: $showShareSheet) {
+                ActivityShareSheet(items: shareItems)
             }
             .alert("¿Eliminar esta ruta?", isPresented: Binding(
                 get: { routeToDelete != nil },
@@ -109,6 +110,19 @@ struct HistoryView: View {
     private var closeToolbarContent: some ToolbarContent {
         ToolbarItem(placement: .navigationBarTrailing) {
             Button("Cerrar") { dismiss() }
+        }
+    }
+
+    private func prepareShare(for route: RouteRecord) {
+        RouteSnapshotGenerator.generate(for: route) { image in
+            DispatchQueue.main.async {
+                var items: [Any] = [route.shareText]
+                if let image {
+                    items.insert(image, at: 0)
+                }
+                self.shareItems = items
+                self.showShareSheet = true
+            }
         }
     }
 }
